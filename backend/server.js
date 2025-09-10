@@ -1,4 +1,3 @@
-
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
@@ -21,7 +20,23 @@ const accessLogStream = fs.createWriteStream('/var/log/backend.log', { flags: 'a
 app.use(bodyParser.json());
 app.use(morgan('combined', { stream: accessLogStream }));
 app.use(morgan('combined')); // also to stdout
-app.use(cors());
+
+// ✅ Explicit CORS setup
+const allowedOrigins = [
+  'http://localhost:3000', // browser hitting frontend via host port
+  'http://frontend:3000'   // container-to-container access
+];
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed for this origin: ' + origin));
+    }
+  },
+  methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  credentials: true
+}));
 
 // Prometheus
 const register = promClient.register;
