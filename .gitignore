@@ -1,0 +1,84 @@
+# ===========================
+# Global
+# ===========================
+node_modules/
+.env
+.env.local
+.env.*.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+dist/
+build/
+.cache/
+.DS_Store
+*.log
+*.pem
+*.key
+
+# ===========================
+# Frontend (React)
+# ===========================
+# For Create React App or Vite
+frontend/node_modules/
+frontend/build/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+frontend/.vite/
+frontend/.next/
+frontend/.parcel-cache/
+frontend/.eslintcache
+
+# ===========================
+# Backend (Node.js/Express)
+# ===========================
+backend/node_modules/
+backend/build/
+backend/dist/
+backend/.env
+backend/.env.local
+backend/.eslintcache
+
+# ===========================
+# MongoDB
+# ===========================
+*.mongodb
+*.mongodb-journal
+dump/
+data/
+mongodb.log
+
+# ===========================
+# Prometheus
+# ===========================
+prometheus/data/
+prometheus/prometheus.yml~
+
+# ===========================
+# Grafana
+# ===========================
+grafana/data/
+grafana/plugins/
+grafana/log/
+grafana/grafana.ini~
+
+# ===========================
+# Docker (if used)
+# ===========================
+docker-compose.override.yml
+*.pid
+*.sock
+
+# ===========================
+# OS / Editor junk
+# ===========================
+Thumbs.db
+ehthumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+*.bak
+*.tmp

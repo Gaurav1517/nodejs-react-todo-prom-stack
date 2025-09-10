@@ -1,0 +1,91 @@
+{
+  "id": null,
+  "title": "Todos + Logs + System",
+  "panels": [
+    {
+      "type": "timeseries",
+      "title": "App: Total Todos (gauge)",
+      "targets": [
+        {
+          "expr": "todo_count",
+          "refId": "A"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "HTTP Request Rate (5m)",
+      "targets": [
+        {
+          "expr": "rate(http_request_duration_seconds_count[5m])",
+          "refId": "B"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "CPU Usage (%)",
+      "targets": [
+        {
+          "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)",
+          "refId": "C"
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Memory Available (%)",
+      "targets": [
+        {
+          "expr": "node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes * 100",
+          "refId": "D"
+        }
+      ],
+      "gridPos": {
+        "x": 12,
+        "y": 8,
+        "w": 12,
+        "h": 8
+      }
+    },
+    {
+      "type": "logs",
+      "title": "Backend Logs (Loki)",
+      "targets": [
+        {
+          "expr": "{job=\"varlogs\"}",
+          "refId": "E",
+          "datasource": {
+            "type": "loki",
+            "uid": ""
+          }
+        }
+      ],
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 24,
+        "h": 12
+      }
+    }
+  ],
+  "schemaVersion": 16
+}

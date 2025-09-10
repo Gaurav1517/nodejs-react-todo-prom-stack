@@ -1,0 +1,116 @@
+
+const express = require('express');
+const mongoose = require('mongoose');
+const bodyParser = require('body-parser');
+const promClient = require('prom-client');
+const morgan = require('morgan');
+const cors = require('cors');
+const fs = require('fs-extra');
+const path = require('path');
+
+const app = express();
+const port = process.env.PORT || 4000;
+const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/todoapp';
+
+// Ensure log dir
+fs.ensureDirSync('/var/log');
+
+// create a write stream for file logging
+const accessLogStream = fs.createWriteStream('/var/log/backend.log', { flags: 'a' });
+
+app.use(bodyParser.json());
+app.use(morgan('combined', { stream: accessLogStream }));
+app.use(morgan('combined')); // also to stdout
+app.use(cors());
+
+// Prometheus
+const register = promClient.register;
+promClient.collectDefaultMetrics({ register });
+const httpRequestDurationMicroseconds = new promClient.Histogram({
+  name: 'http_request_duration_seconds',
+  help: 'Duration of HTTP requests in seconds',
+  labelNames: ['method', 'route', 'code'],
+  buckets: [0.005,0.01,0.05,0.1,0.5,1,2,5]
+});
+const todoCount = new promClient.Gauge({
+  name: 'todo_count',
+  help: 'Number of todos in DB'
+});
+
+// Mongoose
+const todoSchema = new mongoose.Schema({
+  title: String,
+  done: { type: Boolean, default: false },
+  createdAt: { type: Date, default: Date.now }
+});
+const Todo = mongoose.model('Todo', todoSchema);
+
+mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error(err));
+
+app.get('/api/health', (req,res)=>res.json({status:'ok'}));
+
+app.get('/api/todos', async (req,res)=>{
+  const end = httpRequestDurationMicroseconds.startTimer();
+  try{
+    const todos = await Todo.find().sort({createdAt:-1});
+    todoCount.set(todos.length);
+    res.json(todos);
+    end({method:req.method,route:req.route.path,code:200});
+  }catch(e){
+    res.status(500).json({error:e.message});
+    end({method:req.method,route:(req.route?req.route.path:req.path),code:500});
+  }
+});
+
+app.post('/api/todos', async (req,res)=>{
+  const end = httpRequestDurationMicroseconds.startTimer();
+  try{
+    const t = new Todo({title:req.body.title});
+    await t.save();
+    const count = await Todo.countDocuments();
+    todoCount.set(count);
+    res.status(201).json(t);
+    end({method:req.method,route:req.route.path,code:201});
+  }catch(e){
+    res.status(500).json({error:e.message});
+    end({method:req.method,route:(req.route?req.route.path:req.path),code:500});
+  }
+});
+
+app.put('/api/todos/:id', async (req,res)=>{
+  const end = httpRequestDurationMicroseconds.startTimer();
+  try{
+    const t = await Todo.findByIdAndUpdate(req.params.id, req.body, {new:true});
+    const count = await Todo.countDocuments();
+    todoCount.set(count);
+    if(!t) return res.status(404).end();
+    res.json(t);
+    end({method:req.method,route:req.route.path,code:200});
+  }catch(e){
+    res.status(500).json({error:e.message});
+    end({method:req.method,route:(req.route?req.route.path:req.path),code:500});
+  }
+});
+
+app.delete('/api/todos/:id', async (req,res)=>{
+  const end = httpRequestDurationMicroseconds.startTimer();
+  try{
+    await Todo.findByIdAndDelete(req.params.id);
+    const count = await Todo.countDocuments();
+    todoCount.set(count);
+    res.status(204).end();
+    end({method:req.method,route:req.route.path,code:204});
+  }catch(e){
+    res.status(500).json({error:e.message});
+    end({method:req.method,route:(req.route?req.route.path:req.path),code:500});
+  }
+});
+
+app.get('/metrics', async (req,res)=>{
+  res.setHeader('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
+
+app.listen(port, ()=>console.log(`Backend on ${port}`));
