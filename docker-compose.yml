@@ -51,13 +51,12 @@ services:
     image: grafana/loki:2.8.2
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
-    user: "0:0"   # run as root inside container (fixes permission issue)
+    user: "0:0"  # run as root inside container so it can write to volume
     volumes:
       - ./loki/local-config.yaml:/etc/loki/local-config.yaml:ro
-      - ./loki-data:/loki   # use a local folder instead of anonymous volume
+      - ./loki-data:/loki
     ports:
       - "3100:3100"
-    restart: unless-stopped
 
   promtail:
     image: grafana/promtail:2.8.2
