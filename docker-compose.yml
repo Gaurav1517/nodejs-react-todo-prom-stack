@@ -91,7 +91,9 @@ services:
     image: prom/node-exporter:latest
     container_name: node_exporter
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "9100:9100"
+
 
 volumes:
   mongo-data:
