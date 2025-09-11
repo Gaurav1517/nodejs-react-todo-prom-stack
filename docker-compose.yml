@@ -39,7 +39,6 @@ services:
     env_file:
       - ./frontend/.env
 
-
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
