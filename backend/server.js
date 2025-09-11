@@ -23,18 +23,23 @@ app.use(morgan('combined')); // also to stdout
 
 // ✅ Explicit CORS setup
 const allowedOrigins = [
-  'http://localhost:3000', // browser hitting frontend via host port
-  'http://frontend:3000'   // container-to-container access
+  'http://localhost:3000',        // local dev
+  'http://frontend:3000',         // container name
+  'http://192.168.44.132:3000'    // your host IP frontend
 ];
+
 app.use(cors({
   origin: function (origin, callback) {
+    // Allow requests with no origin (like curl, Postman)
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn("Blocked CORS for origin:", origin);
       callback(new Error('CORS not allowed for this origin: ' + origin));
     }
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE'],
+  allowedHeaders: ['Content-Type'],
   credentials: true
 }));
 
