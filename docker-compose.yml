@@ -37,7 +37,8 @@ services:
     depends_on:
       - backend
     env_file:
-      - ./frontend/.env
+      - ./.env
+
 
   prometheus:
     image: prom/prometheus:latest
