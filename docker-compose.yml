@@ -51,9 +51,10 @@ services:
     image: grafana/loki:2.8.2
     container_name: loki
     command: -config.file=/etc/loki/local-config.yaml
+    user: "0:0"   # run as root inside container (fixes permission issue)
     volumes:
       - ./loki/local-config.yaml:/etc/loki/local-config.yaml:ro
-      - loki-data:/loki
+      - ./loki-data:/loki   # use a local folder instead of anonymous volume
     ports:
       - "3100:3100"
     restart: unless-stopped
