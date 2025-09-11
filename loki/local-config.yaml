@@ -8,9 +8,6 @@ ingester:
     enabled: true
     dir: /loki/wal
 
-memberlist:
-  join_members: ["loki"]
-
 schema_config:
   configs:
     - from: 2020-10-24
@@ -24,7 +21,7 @@ schema_config:
 storage_config:
   boltdb_shipper:
     active_index_directory: /loki/index
-    cache_location: /loki/boltdb-cache
+    cache_location: /loki/cache
     shared_store: filesystem
   filesystem:
     directory: /loki/chunks
