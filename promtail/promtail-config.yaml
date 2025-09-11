@@ -9,16 +9,21 @@ clients:
   - url: http://loki:3100/loki/api/v1/push
 
 scrape_configs:
-  - job_name: system_logs
+  # Scrape backend log file
+  - job_name: backend-logs
     static_configs:
-      - targets: [localhost]
-        labels:
-          job: varlogs
-          __path__: /var/log/*.log
-
-  - job_name: backend_logs
-    static_configs:
-      - targets: [localhost]
+      - targets:
+          - localhost
         labels:
           job: backend
+          app: todo-app
           __path__: /var/log/backend.log
+
+  # Scrape container logs (optional)
+  - job_name: docker-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: docker
+          __path__: /var/lib/docker/containers/*/*.log
