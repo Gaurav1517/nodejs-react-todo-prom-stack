@@ -94,6 +94,18 @@ services:
     ports:
       - "9100:9100"
 
+  mongodb_exporter:
+    image: bitnami/mongodb-exporter:latest
+    container_name: mongodb_exporter
+    environment:
+      - MONGODB_URI=mongodb://mongo:27017
+    ports:
+      - "9216:9216"
+    restart: unless-stopped
+    depends_on:
+      - mongo
+
+
 
 volumes:
   mongo-data:
