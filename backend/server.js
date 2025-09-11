@@ -14,17 +14,19 @@ const LokiTransport = require('winston-loki');
 const logger = winston.createLogger({
   format: winston.format.combine(
     winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    winston.format.printf(info => `[${info.timestamp}] ${info.level.toUpperCase()}: ${info.message}`)
+    winston.format.printf(
+      (info) => `[${info.timestamp}] ${info.level.toUpperCase()}: ${info.message}`
+    )
   ),
   transports: [
     new LokiTransport({
-      host: "http://loki:3100", // Loki service in docker-compose
-      labels: { app: "todo-app", service: "backend" },
+      host: 'http://loki:3100', // Loki service in docker-compose
+      labels: { app: 'todo-app', service: 'backend' },
       json: true,
       replaceTimestamp: true,
     }),
-    new winston.transports.Console(), // log to console
-    new winston.transports.File({ filename: '/var/log/backend.log' }) // also file
+    new winston.transports.Console(),
+    new winston.transports.File({ filename: '/var/log/backend.log' }),
   ],
 });
 
@@ -32,36 +34,44 @@ const app = express();
 const port = process.env.PORT || 4000;
 const mongoUri = process.env.MONGO_URI || 'mongodb://mongo:27017/todoapp';
 
-// Ensure log dir exists
+// ====== Ensure log dir exists ======
 fs.ensureDirSync('/var/log');
 
 // create a write stream for HTTP access logging
 const accessLogStream = fs.createWriteStream('/var/log/access.log', { flags: 'a' });
 
-// Log all HTTP requests
+// ====== Middleware ======
+app.use(bodyParser.json()); // ✅ FIX: parse JSON body
+app.use(bodyParser.urlencoded({ extended: true })); // parse URL-encoded
 app.use(morgan('combined', { stream: accessLogStream }));
-app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
+app.use(
+  morgan('combined', {
+    stream: { write: (msg) => logger.info(msg.trim()) },
+  })
+);
 
 // ====== CORS ======
 const allowedOrigins = [
   'http://localhost:3000',
   'http://frontend:3000',
-  'http://192.168.44.132:3000'
+  'http://192.168.44.132:3000',
 ];
 
-app.use(cors({
-  origin: function (origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      logger.warn(`Blocked CORS for origin: ${origin}`);
-      callback(new Error('CORS not allowed for this origin: ' + origin));
-    }
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE'],
-  allowedHeaders: ['Content-Type'],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        logger.warn(`Blocked CORS for origin: ${origin}`);
+        callback(new Error('CORS not allowed for this origin: ' + origin));
+      }
+    },
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type'],
+    credentials: true,
+  })
+);
 
 // ====== Prometheus Metrics ======
 const register = promClient.register;
@@ -71,31 +81,31 @@ const httpRequestDurationSeconds = new promClient.Histogram({
   name: 'http_request_duration_seconds',
   help: 'Duration of HTTP requests in seconds',
   labelNames: ['method', 'route', 'code'],
-  buckets: [0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5]
+  buckets: [0.005, 0.01, 0.05, 0.1, 0.5, 1, 2, 5],
 });
 
 const httpRequestsTotal = new promClient.Counter({
   name: 'http_requests_total',
   help: 'Total number of HTTP requests',
-  labelNames: ['method', 'route', 'status']
+  labelNames: ['method', 'route', 'status'],
 });
 
 const todosCreated = new promClient.Counter({
   name: 'todos_created_total',
-  help: 'Total number of todos created'
+  help: 'Total number of todos created',
 });
 const todosDeleted = new promClient.Counter({
   name: 'todos_deleted_total',
-  help: 'Total number of todos deleted'
+  help: 'Total number of todos deleted',
 });
 const todosCompleted = new promClient.Counter({
   name: 'todos_completed_total',
-  help: 'Total number of todos marked complete'
+  help: 'Total number of todos marked complete',
 });
 
 const todoCount = new promClient.Gauge({
   name: 'todo_count',
-  help: 'Number of todos in DB'
+  help: 'Number of todos in DB',
 });
 
 // Middleware for metrics
@@ -103,7 +113,11 @@ app.use((req, res, next) => {
   const end = httpRequestDurationSeconds.startTimer();
   res.on('finish', () => {
     const route = req.route && req.route.path ? req.route.path : req.path;
-    httpRequestsTotal.inc({ method: req.method, route, status: res.statusCode });
+    httpRequestsTotal.inc({
+      method: req.method,
+      route,
+      status: res.statusCode,
+    });
     end({ method: req.method, route, code: res.statusCode });
     logger.info(`${req.method} ${req.originalUrl} -> ${res.statusCode}`);
   });
@@ -114,13 +128,14 @@ app.use((req, res, next) => {
 const todoSchema = new mongoose.Schema({
   title: String,
   done: { type: Boolean, default: false },
-  createdAt: { type: Date, default: Date.now }
+  createdAt: { type: Date, default: Date.now },
 });
 const Todo = mongoose.model('Todo', todoSchema);
 
-mongoose.connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose
+  .connect(mongoUri, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => logger.info('MongoDB connected'))
-  .catch(err => logger.error(`MongoDB connection error: ${err}`));
+  .catch((err) => logger.error(`MongoDB connection error: ${err}`));
 
 // ====== Routes ======
 app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
@@ -138,6 +153,9 @@ app.get('/api/todos', async (req, res) => {
 
 app.post('/api/todos', async (req, res) => {
   try {
+    if (!req.body || !req.body.title) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
     const t = new Todo({ title: req.body.title });
     await t.save();
     const count = await Todo.countDocuments();
@@ -153,7 +171,9 @@ app.post('/api/todos', async (req, res) => {
 
 app.put('/api/todos/:id', async (req, res) => {
   try {
-    const t = await Todo.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const t = await Todo.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+    });
     const count = await Todo.countDocuments();
     todoCount.set(count);
     if (req.body.done === true) todosCompleted.inc();
