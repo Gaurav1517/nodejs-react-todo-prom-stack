@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 
 // Use env var if available, otherwise fallback to localhost:4000
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api"
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:4000/api";
 
 export default function App() {
   const [todos, setTodos] = useState([])
