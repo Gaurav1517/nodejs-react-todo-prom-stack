@@ -1,8 +1,8 @@
 global:
-  smtp_smarthost: 'smtp.gmail.com:587'
-  smtp_from: 'gaurav.cloud000@gmail.com'
-  smtp_auth_username: 'gaurav.cloud000@gmail.com'
-  smtp_auth_password: 'your-app-password'   # use Gmail App Password, not your real password
+  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_from: '${SMTP_USER}'
+  smtp_auth_username: '${SMTP_USER}'
+  smtp_auth_password: '${SMTP_PASS}'
   smtp_require_tls: true
 
 route:
@@ -14,5 +14,5 @@ route:
 receivers:
   - name: email-team
     email_configs:
-      - to: 'gaurav.cloud000@gmail.com' # reciver email address
+      - to: '${ALERT_RECEIVER}'
         send_resolved: true

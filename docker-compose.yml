@@ -54,13 +54,18 @@ services:
       - alertmanager
 
   alertmanager:
-    image: prom/alertmanager:v0.27.0
-    container_name: alertmanager
-    volumes:
-      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
-    ports:
-      - "9093:9093"
-    restart: unless-stopped
+  image: prom/alertmanager
+  container_name: alertmanager
+  volumes:
+    - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+  command:
+    - '--config.file=/etc/alertmanager/alertmanager.yml'
+    - '--storage.path=/alertmanager'
+  restart: unless-stopped
+  ports:
+    - "9093:9093"
+  env_file:
+    - .env
 
   loki:
     image: grafana/loki:2.8.2
