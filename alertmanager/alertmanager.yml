@@ -1,5 +1,5 @@
 global:
-  smtp_smarthost: '${SMTP_HOST}:${SMTP_PORT}'
+  smtp_smarthost: 'smtp.gmail.com:587'
   smtp_from: '${SMTP_USER}'
   smtp_auth_username: '${SMTP_USER}'
   smtp_auth_password: '${SMTP_PASS}'
