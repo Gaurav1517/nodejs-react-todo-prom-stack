@@ -39,7 +39,7 @@ services:
       - ./.env
 
   prometheus:
-    image: prom/prometheus:v2.52.0
+    image: prom/prometheus:latest
     container_name: prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
