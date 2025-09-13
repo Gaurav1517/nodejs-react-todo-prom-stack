@@ -95,6 +95,15 @@ services:
       - ./grafana/dashboards/:/var/lib/grafana/dashboards/
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
+       # Optional: Enable Grafana’s own email alerts (separate from Alertmanager)
+      - GF_SMTP_ENABLED=true
+      - GF_SMTP_HOST=smtp.gmail.com:587
+      - GF_SMTP_USER=${SMTP_USER}
+      - GF_SMTP_PASSWORD=${SMTP_PASSWORD}
+      - GF_SMTP_FROM_ADDRESS=${SMTP_USER}
+      - GF_SMTP_SKIP_VERIFY=true
+    env_file:
+      - .env
     ports:
       - "4001:3000"
     restart: unless-stopped
