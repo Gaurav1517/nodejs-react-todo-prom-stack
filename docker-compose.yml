@@ -39,12 +39,27 @@ services:
       - ./.env
 
   prometheus:
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.52.0
     container_name: prometheus
     volumes:
       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml
     ports:
       - "9090:9090"
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    depends_on:
+      - alertmanager
+
+  alertmanager:
+    image: prom/alertmanager:v0.27.0
+    container_name: alertmanager
+    volumes:
+      - ./alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+    ports:
+      - "9093:9093"
     restart: unless-stopped
 
   loki:
@@ -53,6 +68,7 @@ services:
     command: -config.file=/etc/loki/local-config.yaml
     ports:
       - "3100:3100"
+    restart: unless-stopped
 
   promtail:
     image: grafana/promtail:2.8.2
@@ -102,116 +118,3 @@ services:
 volumes:
   mongo-data:
   loki-data:
-
-
-# version: "3.8"
-# services:
-#   mongo:
-#     image: mongo:6
-#     container_name: mongo
-#     restart: unless-stopped
-#     volumes:
-#       - mongo-data:/data/db
-#     ports:
-#       - "27017:27017"
-
-#   backend:
-#     build: ./backend
-#     container_name: backend
-#     restart: unless-stopped
-#     environment:
-#       - MONGO_URI=mongodb://mongo:27017/todoapp
-#       - PORT=4000
-#     depends_on:
-#       - mongo
-#     volumes:
-#       - ./logs:/var/log
-#     ports:
-#       - "4000:4000"
-
-#   frontend:
-#     build:
-#       context: ./frontend
-#       dockerfile: Dockerfile
-#       args:
-#         VITE_API_URL: ${VITE_API_URL}
-#     container_name: frontend
-#     restart: unless-stopped
-#     ports:
-#       - "3000:80"
-#     depends_on:
-#       - backend
-#     env_file:
-#       - ./.env
-
-
-#   prometheus:
-#     image: prom/prometheus:latest
-#     container_name: prometheus
-#     volumes:
-#       - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
-#     ports:
-#       - "9090:9090"
-#     restart: unless-stopped
-
-#   loki:
-#     image: grafana/loki:2.8.2
-#     container_name: loki
-#     command: -config.file=/etc/loki/local-config.yaml
-#     volumes:
-#       - ./loki/local-config.yaml:/etc/loki/local-config.yaml:ro
-#       - loki-data:/loki
-#     ports:
-#       - "3100:3100"
-#     restart: unless-stopped
-
-#   promtail:
-#     image: grafana/promtail:2.8.2
-#     container_name: promtail
-#     volumes:
-#       - ./promtail/promtail-config.yaml:/etc/promtail/promtail-config.yaml:ro
-#       - ./logs:/var/log:ro
-#       - /var/lib/docker/containers:/var/lib/docker/containers:ro
-#       - /var/log:/var/log:ro
-#     command: -config.file=/etc/promtail/promtail-config.yaml
-#     restart: unless-stopped
-
-#   grafana:
-#     image: grafana/grafana-oss:10.1.0
-#     container_name: grafana
-#     user: "472"
-#     volumes:
-#       - ./grafana/provisioning/:/etc/grafana/provisioning/
-#       - ./grafana/dashboards/:/var/lib/grafana/dashboards/
-#     environment:
-#       - GF_SECURITY_ADMIN_PASSWORD=admin
-#     ports:
-#       - "4001:3000"
-#     restart: unless-stopped
-#     depends_on:
-#       - prometheus
-#       - loki
-
-#   node_exporter:
-#     image: prom/node-exporter:latest
-#     container_name: node_exporter
-#     restart: unless-stopped
-#     ports:
-#       - "9100:9100"
-
-#   mongodb_exporter:
-#     image: bitnami/mongodb-exporter:latest
-#     container_name: mongodb_exporter
-#     environment:
-#       - MONGODB_URI=mongodb://mongo:27017
-#     ports:
-#       - "9216:9216"
-#     restart: unless-stopped
-#     depends_on:
-#       - mongo
-
-
-
-# volumes:
-#   mongo-data:
-#   loki-data:

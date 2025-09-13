@@ -1,0 +1,21 @@
+groups:
+  - name: system-alerts
+    interval: 30s  # Rules evaluated every 30 seconds
+    rules:
+      - alert: HighCPUUsage
+        expr: 100 - (avg by (instance)(rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 80
+        for: 30s  # Alert fires if condition is true for 30s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage detected"
+          description: "CPU usage on {{ $labels.instance }} is above 80%."
+
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes * 100 > 80
+        for: 30s  # Alert fires if condition is true for 30s
+        labels:
+          severity: critical
+        annotations:
+          summary: "High Memory usage detected"
+          description: "Memory usage on {{ $labels.instance }} is above 80%."
