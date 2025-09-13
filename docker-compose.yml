@@ -99,7 +99,7 @@ services:
       - GF_SMTP_ENABLED=true
       - GF_SMTP_HOST=smtp.gmail.com:587
       - GF_SMTP_USER=${SMTP_USER}
-      - GF_SMTP_PASSWORD=${SMTP_PASSWORD}
+      - GF_SMTP_PASSWORD=${SMTP_PASS}
       - GF_SMTP_FROM_ADDRESS=${SMTP_USER}
       - GF_SMTP_SKIP_VERIFY=true
     env_file:
