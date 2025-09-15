@@ -1,26 +1,29 @@
-
 #!/usr/bin/env bash
-# Simple load generator: parallel curl loops
-# Usage: ./load_test.sh <duration_seconds> <parallel_clients>
+# scripts/load_test.sh <duration_seconds> <max_clients> <url>
 DURATION=${1:-60}
-CLIENTS=${2:-50}
+MAX_CLIENTS=${2:-50}
 URL=${3:-http://localhost:4000/api/todos}
 
-echo "Generating load: ${CLIENTS} clients for ${DURATION}s against ${URL}"
+# Simple ramp-up/ramp-down generator using curl in background loops
+echo "Load test: duration=${DURATION}s max_clients=${MAX_CLIENTS} target=${URL}"
+
 end=$((SECONDS + DURATION))
 
-worker() {
-  while [ $SECONDS -lt $end ]; do
-    # POST a small todo
-    curl -s -X POST -H 'Content-Type: application/json' -d '{"title":"load-$(date +%s%N)"}' ${URL} >/dev/null
-    # GET todos
-    curl -s ${URL} >/dev/null
-  done
-}
-
-for i in $(seq 1 $CLIENTS); do
-  worker &
+# Ramp-up: quickly start clients up to MAX_CLIENTS
+for ((c=1;c<=MAX_CLIENTS;c++)); do
+  (
+    while [ $SECONDS -lt $end ]; do
+      # post a small todo
+      curl -s -X POST -H 'Content-Type: application/json' -d "{\"title\":\"load-$(date +%s%N)\"}" "${URL}" > /dev/null 2>&1
+      # get list
+      curl -s "${URL}" > /dev/null 2>&1
+      sleep 0.1
+    done
+  ) &
+  # small gap to ramp up
+  sleep 0.1
 done
 
+# Wait for duration
 wait
-echo "Load test finished."
+echo "Load test finished"

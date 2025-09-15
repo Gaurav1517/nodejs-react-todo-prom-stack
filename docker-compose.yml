@@ -9,21 +9,22 @@ services:
     ports:
       - "27017:27017"
 
-  backend:
-    build:
-      context: .                 
-      dockerfile: backend/Dockerfile
-    container_name: backend
-    restart: unless-stopped
-    environment:
-      - MONGO_URI=mongodb://mongo:27017/todoapp
-      - PORT=4000
-    depends_on:
-      - mongo
-    volumes:
-      - ./logs:/var/log
-    ports:
-      - "4000:4000"
+    backend:
+      build:
+        context: .                 # project root: so Docker can see scripts/
+        dockerfile: backend/Dockerfile
+      container_name: backend
+      restart: unless-stopped
+      environment:
+        - MONGO_URI=mongodb://mongo:27017/todoapp
+        - PORT=4000
+        - LOAD_TEST_URL=http://backend:4000/api/todos   # optional override inside container
+      depends_on:
+        - mongo
+      volumes:
+        - ./logs:/var/log
+      ports:
+        - "4000:4000"
 
 
   frontend:

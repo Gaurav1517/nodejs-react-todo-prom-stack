@@ -10,6 +10,12 @@ const path = require('path');
 const winston = require('winston');
 const LokiTransport = require('winston-loki');
 const { exec } = require("child_process");
+// add near top of backend/server.js with other requires
+const { spawn } = require('child_process');
+const LoadResult = require('./models/LoadResult'); // new model
+// reuse existing fs (you have fs = require('fs-extra'))
+const runningTests = new Map(); // testId -> child process
+
 
 // ====== Setup Logger with Loki ======
 const logger = winston.createLogger({
@@ -201,33 +207,127 @@ app.delete('/api/todos/:id', async (req, res) => {
   }
 });
 
+//  Add these new routes below your existing routes
+// Start a new load test
+app.post('/api/load-test', async (req, res) => {
+  try {
+    const duration = Number(req.body.duration) || 60;
+    const clients = Number(req.body.clients) || 10;
+    const url = req.body.url || process.env.LOAD_TEST_URL || 'http://localhost:4000/api/todos';
+
+    // create a DB entry
+    const test = new LoadResult({
+      duration,
+      clients,
+      url,
+      status: 'running'
+    });
+    await test.save();
+
+    // prepare logfile path
+    const logFile = `/var/log/load_test_${test._id}.log`;
+    test.logFile = logFile;
+    await test.save();
+
+    // spawn the script: ensure script path matches what you copied into the image
+    // The script path we will copy into Docker image: /app/load_test.sh
+    const child = spawn('bash', ['/app/load_test.sh', String(duration), String(clients), url], {
+      detached: false,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    // write stdout+stderr to file
+    const outStream = fs.createWriteStream(logFile, { flags: 'a' });
+    child.stdout.pipe(outStream);
+    child.stderr.pipe(outStream);
+
+    // store pid & child in memory, update DB
+    runningTests.set(String(test._id), child);
+    test.pid = child.pid;
+    await test.save();
+
+    // when process exits update DB
+    child.on('exit', async (code, signal) => {
+      try {
+        const doc = await LoadResult.findById(test._id);
+        doc.status = code === 0 ? 'completed' : 'failed';
+        doc.output = fs.readFileSync(logFile, 'utf8').slice(0, 100000); // store up to 100k chars
+        doc.pid = null;
+        await doc.save();
+      } catch (err) {
+        logger.error('Error updating load test result: ' + err.message);
+      } finally {
+        runningTests.delete(String(test._id));
+      }
+    });
+
+    res.json({ message: 'Load test started', testId: test._id });
+  } catch (err) {
+    logger.error('Error starting load test: ' + err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Stop a running load test (by testId)
+app.post('/api/load-test/stop', async (req, res) => {
+  try {
+    const { testId } = req.body;
+    if (!testId) return res.status(400).json({ error: 'testId required' });
+    const child = runningTests.get(String(testId));
+    if (!child) {
+      // If process not found in memory, update DB if necessary
+      await LoadResult.findByIdAndUpdate(testId, { status: 'stopped', pid: null });
+      return res.json({ message: 'No running process found for this testId (maybe already finished)' });
+    }
+    // politely ask to stop, then force kill after timeout
+    child.kill('SIGINT');
+    setTimeout(() => {
+      try {
+        process.kill(child.pid, 'SIGKILL');
+      } catch (e) {}
+    }, 5000);
+
+    await LoadResult.findByIdAndUpdate(testId, { status: 'stopped', pid: null });
+    runningTests.delete(String(testId));
+    res.json({ message: 'Stop signal sent' });
+  } catch (err) {
+    logger.error('Error stopping load test: ' + err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// List past load tests (most recent first)
+app.get('/api/load-tests', async (req, res) => {
+  try {
+    const results = await LoadResult.find().sort({ startTime: -1 }).limit(50);
+    res.json(results);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get a load test log file content (plain text)
+app.get('/api/load-test/:id/log', async (req, res) => {
+  try {
+    const id = req.params.id;
+    const doc = await LoadResult.findById(id);
+    if (!doc || !doc.logFile) return res.status(404).send('Log not found');
+    if (!fs.existsSync(doc.logFile)) return res.status(404).send('Log file missing on disk');
+    const content = fs.readFileSync(doc.logFile, 'utf8');
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.send(content);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
 // Prometheus metrics endpoint
 app.get('/metrics', async (req, res) => {
   res.setHeader('Content-Type', register.contentType);
   res.end(await register.metrics());
 });
 
-// Add a new backend API endpoint to run load_test.sh
-
-// --- New endpoint to run load test ---
-app.post("/api/load-test", (req, res) => {
-  const { duration = 30, clients = 20 } = req.body; // defaults
-  const url = process.env.LOAD_TEST_URL || "http://localhost:4000/api/todos";
-
-  const cmd = `bash /app/load_test.sh ${duration} ${clients} ${url}`;
-  logger.info(`Running load test: ${cmd}`);
-
-  exec(cmd, (error, stdout, stderr) => {
-    if (error) {
-      logger.error(`Load test error: ${error.message}`);
-      return res.status(500).json({ error: error.message });
-    }
-    if (stderr) {
-      logger.warn(`Load test stderr: ${stderr}`);
-    }
-    res.json({ message: "Load test finished", output: stdout });
-  });
-});
 
 
 app.listen(port, () => logger.info(`Backend running on port ${port}`));
