@@ -10,7 +10,9 @@ services:
       - "27017:27017"
 
   backend:
-    build: ./backend
+    build:
+      context: .                 
+      dockerfile: backend/Dockerfile
     container_name: backend
     restart: unless-stopped
     environment:
@@ -22,6 +24,7 @@ services:
       - ./logs:/var/log
     ports:
       - "4000:4000"
+
 
   frontend:
     build:
