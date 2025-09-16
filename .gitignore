@@ -13,7 +13,6 @@ dist/
 build/
 .cache/
 .DS_Store
-*.log
 *.pem
 *.key
 
@@ -82,4 +81,3 @@ ehthumbs.db
 *.swo
 *.bak
 *.tmp
-
